@@ -1,0 +1,83 @@
+# Binaries and build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+bin/
+_build/
+
+# Vendor and Go workspace
+vendor/
+go.work
+go.work.sum
+
+# Package output
+pkg/
+out/
+
+# Test, coverage and profiles
+coverage.out
+*.cover
+*.prof
+
+# IDEs and editors
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+```// filepath: c:\Users\USER\Documents\Project\txt-to-sqlserver\.gitignore
+# Binaries and build artifacts
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+bin/
+_build/
+
+# Vendor and Go workspace
+vendor/
+go.work
+go.work.sum
+
+# Package output
+pkg/
+out/
+
+# Test, coverage and profiles
+coverage.out
+*.cover
+*.prof
+
+# IDEs and editors
+.vscode/
+.idea/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+
+# Temporary files
+input/
+transfer/
