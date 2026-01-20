@@ -15,7 +15,7 @@ import (
 	"go-import-file/internal/worker"
 )
 
-func RunMCustGrp(
+func RunMPayerTo(
 	ctx context.Context,
 	dbConn *sql.DB,
 	filePath string,
@@ -24,7 +24,7 @@ func RunMCustGrp(
 
 	cfg := config.Load()
 
-	files, err := filepath.Glob(filePath + "/*_MCUSTGRP.txt")
+	files, err := filepath.Glob(filePath + "/*_MPAYERTO.txt")
 	if err != nil || len(files) == 0 {
 		return err
 	}
@@ -41,13 +41,13 @@ func RunMCustGrp(
 	atomic.StoreInt64(&metrics.TotalLines, totalLines)
 	atomic.StoreInt64(&metrics.ProcessedLines, 0)
 
-	log.Printf("TOTAL LINES (MCUSTGRP): %d\n", totalLines)
+	log.Printf("TOTAL LINES (MPAYERTO): %d\n", totalLines)
 
 	// ======================
 	// Channels
 	// ======================
 	jobs := make(chan worker.FileJob, len(files))
-	ch02 := make(chan model.McustGrp, cfg.BufferSize)
+	ch110 := make(chan model.MPayerTo, cfg.BufferSize)
 	fileMetrics := make(chan metrics.FileMetric, 100)
 
 	// ======================
@@ -75,7 +75,6 @@ func RunMCustGrp(
 			nil,
 			nil,
 			nil,
-			ch02,
 			nil,
 			nil,
 			nil,
@@ -92,6 +91,7 @@ func RunMCustGrp(
 			nil,
 			nil,
 			nil,
+			ch110,
 		)
 	}
 
@@ -106,22 +106,22 @@ func RunMCustGrp(
 	// ======================
 	// Bulk Insert
 	// ======================
-	done02 := make(chan struct{})
-	go worker.Bulk02(ctx, dbConn, ch02, done02)
+	done110 := make(chan struct{})
+	go worker.Bulk110(ctx, dbConn, ch110, done110)
 
 	// ======================
 	// Shutdown Order (CRITICAL)
 	// ======================
 	parseWg.Wait()
-	close(ch02)
-	<-done02
+	close(ch110)
+	<-done110
 
 	close(fileMetrics)
 	<-metricsDone
 
 	close(progressDone)
 
-	log.Printf("MCUSTGRP rows inserted: %d\n",
+	log.Printf("MPAYERTO rows inserted: %d\n",
 		atomic.LoadInt64(&metrics.InsertedRows),
 	)
 

@@ -350,6 +350,32 @@ func main() {
 				},
 			},
 		},
+		"MMARKET": {
+			{
+				Name: "IMPORT MMARKET",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMmarket(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
+		"MPAYERTO": {
+			{
+				Name: "IMPORT MPAYERTO",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMPayerTo(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
 	}
 
 	// =========================================================

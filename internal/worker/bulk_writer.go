@@ -1510,3 +1510,119 @@ func Bulk113(ctx context.Context, db *sql.DB, ch <-chan model.MkplPrice, done ch
 	}
 	close(rows)
 }
+
+func Bulk105(ctx context.Context, db *sql.DB, ch <-chan model.Mmarket, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk105")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.gm_cust_market",
+			"#tmp_gm_cust_market",
+			[]string{"psr_pasar_id", "psr_long_desc", "psr_short_desc", "kodecabang", "CORE_FILENAME", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_gm_cust_market (
+				psr_pasar_id NVARCHAR(255),
+				psr_long_desc NVARCHAR(255),
+				psr_short_desc NVARCHAR(255),
+				kodecabang NVARCHAR(255),
+				CORE_FILENAME NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.psr_pasar_id = src.psr_pasar_id AND tgt.kodecabang = src.kodecabang",
+			`
+			tgt.psr_pasar_id = src.psr_pasar_id,
+			tgt.psr_long_desc = src.psr_long_desc,
+			tgt.psr_short_desc = src.psr_short_desc,
+			tgt.kodecabang = src.kodecabang,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk105][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.PsrPasarId,
+				r.PsrLongDesc,
+				r.PsrShortDesc,
+				r.Kodecabang,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk110(ctx context.Context, db *sql.DB, ch <-chan model.MPayerTo, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk110")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.FMST_PAYTO",
+			"#tmp_fmst_payto",
+			[]string{"CUSTNO", "CUSTNO_BIL", "DESC_CUSTNO_BIL", "KODECABANG", "CORE_FILENAME", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_fmst_payto (
+				CUSTNO NVARCHAR(255),
+				CUSTNO_BIL NVARCHAR(255),
+				DESC_CUSTNO_BIL NVARCHAR(255),
+				KODECABANG NVARCHAR(255),
+				CORE_FILENAME NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.KODECABANG = src.KODECABANG AND tgt.CUSTNO = src.CUSTNO",
+			`
+			tgt.CUSTNO = src.CUSTNO,
+			tgt.CUSTNO_BIL = src.CUSTNO_BIL,
+			tgt.DESC_CUSTNO_BIL = src.DESC_CUSTNO_BIL,
+			tgt.KODECABANG = src.KODECABANG,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk105][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.CustNo,
+				r.CustNoBil,
+				r.DescCustNoBil,
+				r.Kodecabang,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}
