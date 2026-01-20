@@ -89,6 +89,7 @@ func RunMBeat(
 			nil,
 			nil,
 			nil,
+			nil,
 		)
 	}
 

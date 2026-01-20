@@ -327,6 +327,29 @@ func main() {
 				},
 			},
 		},
+		"MKPLPRICE": {
+			{
+				Name: "IMPORT MKPLPRICE",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMkplPrice(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+			{
+				Name: "FINALIZE MKPLPRICE",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMkplPriceFinalizeIdempotent(
+						ctx,
+						dbConn,
+						processID,
+					)
+				},
+			},
+		},
 	}
 
 	// =========================================================

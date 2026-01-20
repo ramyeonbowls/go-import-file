@@ -89,6 +89,7 @@ func RunSlsInv(
 			nil,
 			nil,
 			nil,
+			nil,
 		)
 	}
 

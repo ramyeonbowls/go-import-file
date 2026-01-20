@@ -1464,3 +1464,49 @@ func Bulk46(ctx context.Context, db *sql.DB, ch <-chan model.Mkat, done chan<- s
 	}
 	close(rows)
 }
+
+func Bulk113(ctx context.Context, db *sql.DB, ch <-chan model.MkplPrice, done chan<- struct{}) {
+	l, _ := logger.NewDailyWorkerLogger("bulk113")
+	rows := make(chan func() []any, 2048)
+
+	go bulkInsert(ctx, db, "dbo.mkplprice_dummy",
+		[]string{
+			"UNIQ_ID",
+			"LINE_NO",
+			"CUST_CODE",
+			"BRANCH_ID",
+			"PCODE",
+			"PRICE_VALUE",
+			"PRICE_UOM",
+			"CBY",
+			"CDATE",
+			"MBY",
+			"MDATE",
+			"CORE_FILENAME",
+			"CORE_PROCESSDATE",
+		},
+		rows, done, l,
+	)
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.UniqID,
+				r.LineNo,
+				r.CustCode,
+				r.Pcode,
+				r.PriceValue,
+				r.PriceUom,
+				r.BranchID,
+				r.Cby,
+				r.Cdate,
+				r.Mby,
+				r.Mdate,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}

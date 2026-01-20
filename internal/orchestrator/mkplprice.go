@@ -17,7 +17,7 @@ import (
 	"go-import-file/internal/worker"
 )
 
-func RunMPrice(
+func RunMkplPrice(
 	ctx context.Context,
 	dbConn *sql.DB,
 	filePath string,
@@ -26,7 +26,7 @@ func RunMPrice(
 
 	cfg := config.Load()
 
-	files, err := filepath.Glob(filePath + "/*_MPRICE.txt")
+	files, err := filepath.Glob(filePath + "/*_MKPLPRICE.txt")
 	if err != nil || len(files) == 0 {
 		return err
 	}
@@ -47,7 +47,7 @@ func RunMPrice(
 	// Channels
 	// ======================
 	jobs := make(chan worker.FileJob, len(files))
-	ch16 := make(chan model.Mprice, cfg.BufferSize)
+	ch113 := make(chan model.MkplPrice, cfg.BufferSize)
 	fileMetrics := make(chan metrics.FileMetric, 100)
 
 	// ======================
@@ -71,7 +71,6 @@ func RunMPrice(
 			jobs,
 			fileMetrics,
 			processID,
-			ch16,
 			nil,
 			nil,
 			nil,
@@ -90,6 +89,7 @@ func RunMPrice(
 			nil,
 			nil,
 			nil,
+			ch113,
 		)
 	}
 
@@ -104,35 +104,35 @@ func RunMPrice(
 	// ======================
 	// Bulk Insert
 	// ======================
-	done16 := make(chan struct{})
-	go worker.Bulk16(ctx, dbConn, ch16, done16)
+	done113 := make(chan struct{})
+	go worker.Bulk113(ctx, dbConn, ch113, done113)
 
 	// ======================
 	// Shutdown Order (CRITICAL)
 	// ======================
 	parseWg.Wait()
-	close(ch16)
-	<-done16
+	close(ch113)
+	<-done113
 
 	close(fileMetrics)
 	<-metricsDone
 
 	close(progressDone)
 
-	log.Printf("MPRICE rows inserted: %d\n",
+	log.Printf("MKPLPRICE rows inserted: %d\n",
 		atomic.LoadInt64(&metrics.InsertedRows),
 	)
 
 	return nil
 }
 
-func RunMPriceFinalizeIdempotent(
+func RunMkplPriceFinalizeIdempotent(
 	ctx context.Context,
 	db *sql.DB,
 	processID string,
 ) error {
 
-	const block = "MPRICE"
+	const block = "MKPLPRICE"
 
 	// =============================
 	// ACQUIRE FINALIZE LOCK
@@ -155,10 +155,10 @@ func RunMPriceFinalizeIdempotent(
 	if err == nil {
 		switch status {
 		case "DONE":
-			log.Println("MPRICE FINALIZE already DONE, skip")
+			log.Println("MKPLPRICE FINALIZE already DONE, skip")
 			return nil
 		case "RUNNING":
-			return fmt.Errorf("MPRICE FINALIZE already RUNNING")
+			return fmt.Errorf("MKPLPRICE FINALIZE already RUNNING")
 		}
 	} else if err != sql.ErrNoRows {
 		return err
@@ -191,7 +191,7 @@ func RunMPriceFinalizeIdempotent(
 	// =============================
 	// ACTUAL FINALIZE (YOUR FUNCTION)
 	// =============================
-	if err := importer.RunMPriceFinalize(ctx, db, processID); err != nil {
+	if err := importer.RunMkplPriceFinalize(ctx, db, processID); err != nil {
 		_, _ = db.ExecContext(ctx, `
 			UPDATE import_finalize_log
 			SET status='FAILED',

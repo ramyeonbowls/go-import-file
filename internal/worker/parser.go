@@ -39,10 +39,11 @@ func ParseWorker(
 	ch03 chan<- model.McustType,
 	ch102 chan<- model.MDistrict,
 	ch46 chan<- model.Mkat,
+	ch113 chan<- model.MkplPrice,
 ) {
 	defer wg.Done()
 
-	handlers := BuildBlockHandlers(ch16, ch15, ch01, ch25, ch02, ch05, ch20, ch43, ch35, ch39, ch108, ch103, ch44, ch112, ch111, ch03, ch102, ch46)
+	handlers := BuildBlockHandlers(ch16, ch15, ch01, ch25, ch02, ch05, ch20, ch43, ch35, ch39, ch108, ch103, ch44, ch112, ch111, ch03, ch102, ch46, ch113)
 	cfg := config.Load()
 
 	for job := range jobs {
