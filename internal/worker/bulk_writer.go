@@ -1356,3 +1356,111 @@ func Bulk03(ctx context.Context, db *sql.DB, ch <-chan model.McustType, done cha
 	}
 	close(rows)
 }
+
+func Bulk102(ctx context.Context, db *sql.DB, ch <-chan model.MDistrict, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk102")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.fdistrik",
+			"#tmp_fdistrik",
+			[]string{"KODECABANG", "DISTRIK", "DISTRIKNAME", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_fdistrik (
+				KODECABANG NVARCHAR(255),
+				DISTRIK NVARCHAR(255),
+				DISTRIKNAME NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.DISTRIK = src.DISTRIK AND tgt.KODECABANG = src.KODECABANG",
+			`
+			tgt.KODECABANG = src.KODECABANG,
+			tgt.DISTRIK = src.DISTRIK,
+			tgt.DISTRIKNAME = src.DISTRIKNAME,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk102][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.KodeCabang,
+				r.Distrik,
+				r.DistrikName,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk46(ctx context.Context, db *sql.DB, ch <-chan model.Mkat, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk46")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.fkategori",
+			"#tmp_fkategori",
+			[]string{"KODE", "KET", "KODEDISTRIBUTOR", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_fkategori (
+				KODE NVARCHAR(255),
+				KET NVARCHAR(255),
+				KODEDISTRIBUTOR NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.KODE = src.KODE AND tgt.KODEDISTRIBUTOR = src.KODEDISTRIBUTOR",
+			`
+			tgt.KODE = src.KODE,
+			tgt.KET = src.KET,
+			tgt.KODEDISTRIBUTOR = src.KODEDISTRIBUTOR,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk46][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.Kode,
+				r.Ket,
+				r.KodeDistributor,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}

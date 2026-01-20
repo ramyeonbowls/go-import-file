@@ -301,6 +301,32 @@ func main() {
 				},
 			},
 		},
+		"MDISTRICT": {
+			{
+				Name: "IMPORT MDISTRICT",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMDistrict(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
+		"MKAT": {
+			{
+				Name: "IMPORT MKAT",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMKat(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
 	}
 
 	// =========================================================

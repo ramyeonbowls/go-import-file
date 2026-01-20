@@ -28,6 +28,8 @@ func BuildBlockHandlers(
 	ch112 chan<- model.McustInvD,
 	ch111 chan<- model.McustInvH,
 	ch03 chan<- model.McustType,
+	ch102 chan<- model.MDistrict,
+	ch46 chan<- model.Mkat,
 ) map[string]BlockHandler {
 
 	return map[string]BlockHandler{
@@ -47,5 +49,7 @@ func BuildBlockHandlers(
 		"112": &Block112Handler{Out: ch112},
 		"111": &Block111Handler{Out: ch111},
 		"03":  &Block03Handler{Out: ch03},
+		"102": &Block102Handler{Out: ch102},
+		"46":  &Block46Handler{Out: ch46},
 	}
 }

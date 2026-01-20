@@ -15,7 +15,7 @@ import (
 	"go-import-file/internal/worker"
 )
 
-func RunMCustCl(
+func RunMDistrict(
 	ctx context.Context,
 	dbConn *sql.DB,
 	filePath string,
@@ -24,7 +24,7 @@ func RunMCustCl(
 
 	cfg := config.Load()
 
-	files, err := filepath.Glob(filePath + "/*_MCUSTCL.txt")
+	files, err := filepath.Glob(filePath + "/*_MDISTRICT.txt")
 	if err != nil || len(files) == 0 {
 		return err
 	}
@@ -41,13 +41,13 @@ func RunMCustCl(
 	atomic.StoreInt64(&metrics.TotalLines, totalLines)
 	atomic.StoreInt64(&metrics.ProcessedLines, 0)
 
-	log.Printf("TOTAL LINES (MCUSTCL): %d\n", totalLines)
+	log.Printf("TOTAL LINES (MDISTRICT): %d\n", totalLines)
 
 	// ======================
 	// Channels
 	// ======================
 	jobs := make(chan worker.FileJob, len(files))
-	ch44 := make(chan model.McustCl, cfg.BufferSize)
+	ch102 := make(chan model.MDistrict, cfg.BufferSize)
 	fileMetrics := make(chan metrics.FileMetric, 100)
 
 	// ======================
@@ -83,11 +83,11 @@ func RunMCustCl(
 			nil,
 			nil,
 			nil,
-			ch44,
 			nil,
 			nil,
 			nil,
 			nil,
+			ch102,
 			nil,
 		)
 	}
@@ -103,22 +103,22 @@ func RunMCustCl(
 	// ======================
 	// Bulk Insert
 	// ======================
-	done44 := make(chan struct{})
-	go worker.Bulk44(ctx, dbConn, ch44, done44)
+	done102 := make(chan struct{})
+	go worker.Bulk102(ctx, dbConn, ch102, done102)
 
 	// ======================
 	// Shutdown Order (CRITICAL)
 	// ======================
 	parseWg.Wait()
-	close(ch44)
-	<-done44
+	close(ch102)
+	<-done102
 
 	close(fileMetrics)
 	<-metricsDone
 
 	close(progressDone)
 
-	log.Printf("MCUSTCL rows inserted: %d\n",
+	log.Printf("MDISTRICT rows inserted: %d\n",
 		atomic.LoadInt64(&metrics.InsertedRows),
 	)
 
