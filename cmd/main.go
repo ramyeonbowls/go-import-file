@@ -376,6 +376,110 @@ func main() {
 				},
 			},
 		},
+		"MPROVINCE": {
+			{
+				Name: "IMPORT MPROVINCE",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMProvince(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
+		"MRUTE": {
+			{
+				Name: "IMPORT MRUTE",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMRute(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
+		"MSBRAND": {
+			{
+				Name: "IMPORT MSBRAND",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMSBrand(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
+		"MSHIPTO": {
+			{
+				Name: "IMPORT MSHIPTO",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMShipTo(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
+		"MSLINE": {
+			{
+				Name: "IMPORT MSLINE",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMSline(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
+		"MSUBBEAT": {
+			{
+				Name: "IMPORT MSUBBEAT",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMSubBeat(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
+		"MSUBBRAND": {
+			{
+				Name: "IMPORT MSUBBRAND",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMSubBrand(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
+		"MTOP": {
+			{
+				Name: "IMPORT MTOP",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunMTop(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		},
 	}
 
 	// =========================================================

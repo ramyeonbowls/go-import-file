@@ -1626,3 +1626,489 @@ func Bulk110(ctx context.Context, db *sql.DB, ch <-chan model.MPayerTo, done cha
 	}
 	close(rows)
 }
+
+func Bulk101(ctx context.Context, db *sql.DB, ch <-chan model.MProvince, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk101")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.fprovinsi",
+			"#tmp_fprovinsi",
+			[]string{"PROVINSI_ID", "PROVINSI_NAME", "CORE_FILENAME", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_fprovinsi (
+				PROVINSI_ID NVARCHAR(255),
+				PROVINSI_NAME NVARCHAR(255),
+				CORE_FILENAME NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.PROVINSI_ID = src.PROVINSI_ID",
+			`
+			tgt.PROVINSI_ID = src.PROVINSI_ID,
+			tgt.PROVINSI_NAME = src.PROVINSI_NAME,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk101][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProvinsiId,
+				r.ProvinsiName,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk19(ctx context.Context, db *sql.DB, ch <-chan model.MRute, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk19")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.frute",
+			"#tmp_frute",
+			[]string{"REGION", "CABANG", "KODECABANG", "SLSNO", "NORUTE", "CUSTNO", "H1", "H2", "H3", "H4", "H5", "H6", "H7", "M1", "M2", "M3", "M4", "CORE_FILENAME", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_frute (
+				REGION NVARCHAR(255),
+				CABANG NVARCHAR(255),
+				KODECABANG NVARCHAR(255),
+				SLSNO NVARCHAR(255),
+				NORUTE NVARCHAR(255),
+				CUSTNO NVARCHAR(255),
+				H1 NVARCHAR(255),
+				H2 NVARCHAR(255),
+				H3 NVARCHAR(255),
+				H4 NVARCHAR(255),
+				H5 NVARCHAR(255),
+				H6 NVARCHAR(255),
+				H7 NVARCHAR(255),
+				M1 NVARCHAR(255),
+				M2 NVARCHAR(255),
+				M3 NVARCHAR(255),
+				M4 NVARCHAR(255),
+				PROVINSI_NAME NVARCHAR(255),
+				CORE_FILENAME NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.REGION = src.REGION AND tgt.CABANG = src.CABANG AND tgt.KODECABANG = src.KODECABANG AND tgt.SLSNO = src.SLSNO AND tgt.NORUTE = src.NORUTE AND tgt.CUSTNO = src.CUSTNO",
+			`
+			tgt.REGION = src.REGION,
+			tgt.CABANG = src.CABANG,
+			tgt.KODECABANG = src.KODECABANG,
+			tgt.SLSNO = src.SLSNO,
+			tgt.NORUTE = src.NORUTE,
+			tgt.CUSTNO = src.CUSTNO,
+			tgt.H1 = src.H1,
+			tgt.H2 = src.H2,
+			tgt.H3 = src.H3,
+			tgt.H4 = src.H4,
+			tgt.H5 = src.H5,
+			tgt.H6 = src.H6,
+			tgt.H7 = src.H7,
+			tgt.M1 = src.M1,
+			tgt.M2 = src.M2,
+			tgt.M3 = src.M3,
+			tgt.M4 = src.M4,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk101][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.Region,
+				r.Cabang,
+				r.Kodecabang,
+				r.SlsNo,
+				r.NoRute,
+				r.CustNo,
+				r.HSatu,
+				r.HDua,
+				r.HTiga,
+				r.HEmpat,
+				r.HLima,
+				r.HEnam,
+				r.HTujuh,
+				r.MSatu,
+				r.MDua,
+				r.MTiga,
+				r.MEmpat,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk23(ctx context.Context, db *sql.DB, ch <-chan model.MSBrand, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk23")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.fbrand",
+			"#tmp_fbrand",
+			[]string{"BRAND", "BRANDNAME", "KODECABANG", "CORE_FILENAME", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_fbrand (
+				BRAND NVARCHAR(255),
+				BRANDNAME NVARCHAR(255),
+				KODECABANG NVARCHAR(255),
+				CORE_FILENAME NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.BRAND = src.BRAND AND tgt.KODECABANG = src.KODECABANG",
+			`
+			tgt.BRAND = src.BRAND,
+			tgt.BRANDNAME = src.BRANDNAME,
+			tgt.KODECABANG = src.KODECABANG,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk23][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.Brand,
+				r.BrandName,
+				r.Kodecabang,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk109(ctx context.Context, db *sql.DB, ch <-chan model.MShipTo, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk109")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.fshippto",
+			"#tmp_fshippto",
+			[]string{"CUSTNO", "CUSTNO_SHIP", "DESC_CUSTNO_SHIP", "KODECABANG", "CORE_FILENAME", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_fshippto (
+				CUSTNO NVARCHAR(255),
+				CUSTNO_SHIP NVARCHAR(255),
+				DESC_CUSTNO_SHIP NVARCHAR(255),
+				KODECABANG NVARCHAR(255),
+				CORE_FILENAME NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.CUSTNO = src.CUSTNO AND tgt.KODECABANG = src.KODECABANG",
+			`
+			tgt.CUSTNO = src.CUSTNO,
+			tgt.CUSTNO_SHIP = src.CUSTNO_SHIP,
+			tgt.DESC_CUSTNO_SHIP = src.DESC_CUSTNO_SHIP,
+			tgt.KODECABANG = src.KODECABANG,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk109][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.CustNo,
+				r.CustNoShip,
+				r.DescCustNoShip,
+				r.Kodecabang,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk22(ctx context.Context, db *sql.DB, ch <-chan model.MSline, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk22")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.fprlin",
+			"#tmp_fprlin",
+			[]string{"PRLIN", "PRLINAME", "KOMPFLAG", "CORE_FILENAME", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_fprlin (
+				PRLIN NVARCHAR(255),
+				PRLINAME NVARCHAR(255),
+				KOMPFLAG NVARCHAR(255),
+				CORE_FILENAME NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.PRLIN = src.PRLIN",
+			`
+			tgt.PRLIN = src.PRLIN,
+			tgt.PRLINAME = src.PRLINAME,
+			tgt.KOMPFLAG = src.KOMPFLAG,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk22][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.Prlin,
+				r.PrliName,
+				r.KompFlag,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk104(ctx context.Context, db *sql.DB, ch <-chan model.MSubBeat, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk104")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.gm_cust_rayon",
+			"#tmp_gm_cust_rayon",
+			[]string{"rc_district_id", "rc_wilayah_id", "rc_rayon_id", "rc_rayon_desc", "CORE_FILENAME", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_gm_cust_rayon (
+				rc_district_id NVARCHAR(255),
+				rc_wilayah_id NVARCHAR(255),
+				rc_rayon_id NVARCHAR(255),
+				rc_rayon_desc NVARCHAR(255),
+				CORE_FILENAME NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.rc_district_id = src.rc_district_id and tgt.rc_wilayah_id = src.rc_wilayah_id and tgt.rc_rayon_id = src.rc_rayon_id",
+			`
+			tgt.rc_district_id = src.rc_district_id,
+			tgt.rc_wilayah_id = src.rc_wilayah_id,
+			tgt.rc_rayon_id = src.rc_rayon_id,
+			tgt.rc_rayon_desc = src.rc_rayon_desc,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk104][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.RcDistrictId,
+				r.RcWilayahId,
+				r.RcRayonId,
+				r.RcRayonDesc,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk47(ctx context.Context, db *sql.DB, ch <-chan model.MSubBrand, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk47")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.fsubbrand",
+			"#tmp_fsubbrand",
+			[]string{"KODE", "BRAND", "KET", "CORE_FILENAME", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_fsubbrand (
+				KODE NVARCHAR(255),
+				BRAND NVARCHAR(255),
+				KET NVARCHAR(255),
+				CORE_FILENAME NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.KODE = src.KODE AND tgt.BRAND = src.BRAND",
+			`
+			tgt.KODE = src.KODE,
+			tgt.BRAND = src.BRAND,
+			tgt.KET = src.KET,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk104][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.Kode,
+				r.Brand,
+				r.Ket,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk07(ctx context.Context, db *sql.DB, ch <-chan model.MTop, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk07")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTable(
+			ctx,
+			db,
+			"dbo.ftop",
+			"#tmp_ftop",
+			[]string{"TOP", "TOP_DESC", "TOP_DAYS", "CORE_FILENAME", "CORE_PROCESSDATE"},
+			`
+			CREATE TABLE #tmp_ftop (
+				TOP NVARCHAR(255),
+				TOP_DESC NVARCHAR(255),
+				TOP_DAYS NVARCHAR(255),
+				CORE_FILENAME NVARCHAR(255),
+				CORE_PROCESSDATE DATETIME
+			)
+			`,
+			"tgt.TOP = src.TOP",
+			`
+			tgt.TOP = src.TOP,
+			tgt.TOP_DESC = src.TOP_DESC,
+			tgt.TOP_DAYS = src.TOP_DAYS,
+			tgt.CORE_FILENAME = src.CORE_FILENAME,
+			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
+			`,
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk104][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.Top,
+				r.TopDesc,
+				r.TopDays,
+				r.CoreFilename,
+				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}

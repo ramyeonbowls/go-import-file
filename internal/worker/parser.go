@@ -42,10 +42,18 @@ func ParseWorker(
 	ch113 chan<- model.MkplPrice,
 	ch105 chan<- model.Mmarket,
 	ch110 chan<- model.MPayerTo,
+	ch101 chan<- model.MProvince,
+	ch19 chan<- model.MRute,
+	ch23 chan<- model.MSBrand,
+	ch109 chan<- model.MShipTo,
+	ch22 chan<- model.MSline,
+	ch104 chan<- model.MSubBeat,
+	ch47 chan<- model.MSubBrand,
+	ch07 chan<- model.MTop,
 ) {
 	defer wg.Done()
 
-	handlers := BuildBlockHandlers(ch16, ch15, ch01, ch25, ch02, ch05, ch20, ch43, ch35, ch39, ch108, ch103, ch44, ch112, ch111, ch03, ch102, ch46, ch113, ch105, ch110)
+	handlers := BuildBlockHandlers(ch16, ch15, ch01, ch25, ch02, ch05, ch20, ch43, ch35, ch39, ch108, ch103, ch44, ch112, ch111, ch03, ch102, ch46, ch113, ch105, ch110, ch101, ch19, ch23, ch109, ch22, ch104, ch47, ch07)
 	cfg := config.Load()
 
 	for job := range jobs {

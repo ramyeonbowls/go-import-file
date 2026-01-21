@@ -15,7 +15,7 @@ import (
 	"go-import-file/internal/worker"
 )
 
-func RunMCust(
+func RunMSline(
 	ctx context.Context,
 	dbConn *sql.DB,
 	filePath string,
@@ -24,7 +24,7 @@ func RunMCust(
 
 	cfg := config.Load()
 
-	files, err := filepath.Glob(filePath + "/*_MCUST.txt")
+	files, err := filepath.Glob(filePath + "/*_MSLINE.txt")
 	if err != nil || len(files) == 0 {
 		return err
 	}
@@ -41,13 +41,13 @@ func RunMCust(
 	atomic.StoreInt64(&metrics.TotalLines, totalLines)
 	atomic.StoreInt64(&metrics.ProcessedLines, 0)
 
-	log.Printf("TOTAL LINES (MCUST): %d\n", totalLines)
+	log.Printf("TOTAL LINES (MSHIPTO): %d\n", totalLines)
 
 	// ======================
 	// Channels
 	// ======================
 	jobs := make(chan worker.FileJob, len(files))
-	ch01 := make(chan model.Mcust, cfg.BufferSize)
+	ch22 := make(chan model.MSline, cfg.BufferSize)
 	fileMetrics := make(chan metrics.FileMetric, 100)
 
 	// ======================
@@ -73,7 +73,6 @@ func RunMCust(
 			processID,
 			nil,
 			nil,
-			ch01,
 			nil,
 			nil,
 			nil,
@@ -97,6 +96,7 @@ func RunMCust(
 			nil,
 			nil,
 			nil,
+			ch22,
 			nil,
 			nil,
 			nil,
@@ -114,22 +114,22 @@ func RunMCust(
 	// ======================
 	// Bulk Insert
 	// ======================
-	done01 := make(chan struct{})
-	go worker.Bulk01(ctx, dbConn, ch01, done01)
+	done22 := make(chan struct{})
+	go worker.Bulk22(ctx, dbConn, ch22, done22)
 
 	// ======================
 	// Shutdown Order (CRITICAL)
 	// ======================
 	parseWg.Wait()
-	close(ch01)
-	<-done01
+	close(ch22)
+	<-done22
 
 	close(fileMetrics)
 	<-metricsDone
 
 	close(progressDone)
 
-	log.Printf("MCUST rows inserted: %d\n",
+	log.Printf("MSHIPTO rows inserted: %d\n",
 		atomic.LoadInt64(&metrics.InsertedRows),
 	)
 

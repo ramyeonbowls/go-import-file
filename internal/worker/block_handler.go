@@ -33,6 +33,14 @@ func BuildBlockHandlers(
 	ch113 chan<- model.MkplPrice,
 	ch105 chan<- model.Mmarket,
 	ch110 chan<- model.MPayerTo,
+	ch101 chan<- model.MProvince,
+	ch19 chan<- model.MRute,
+	ch23 chan<- model.MSBrand,
+	ch109 chan<- model.MShipTo,
+	ch22 chan<- model.MSline,
+	ch104 chan<- model.MSubBeat,
+	ch47 chan<- model.MSubBrand,
+	ch07 chan<- model.MTop,
 ) map[string]BlockHandler {
 
 	return map[string]BlockHandler{
@@ -57,5 +65,13 @@ func BuildBlockHandlers(
 		"113": &Block113Handler{Out: ch113},
 		"105": &Block105Handler{Out: ch105},
 		"110": &Block110Handler{Out: ch110},
+		"101": &Block101Handler{Out: ch101},
+		"19":  &Block19Handler{Out: ch19},
+		"23":  &Block23Handler{Out: ch23},
+		"109": &Block109Handler{Out: ch109},
+		"22":  &Block22Handler{Out: ch22},
+		"104": &Block104Handler{Out: ch104},
+		"47":  &Block47Handler{Out: ch47},
+		"07":  &Block07Handler{Out: ch07},
 	}
 }
