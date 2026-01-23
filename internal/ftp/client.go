@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"go-import-file/internal/config"
@@ -56,6 +57,8 @@ func (c *Client) DownloadFiles(localFolder string) ([]string, error) {
 
 	var downloadedFiles []string
 
+	FilenamePattern := os.Getenv("FTP_FILENAME_PATTERN")
+	namePattern := strings.Split(FilenamePattern, "|")
 	for _, entry := range entries {
 		if entry.Type != ftp.EntryTypeFile {
 			continue
@@ -66,6 +69,18 @@ func (c *Client) DownloadFiles(localFolder string) ([]string, error) {
 			if !matched {
 				continue
 			}
+		}
+
+		lowerName := strings.ToLower(entry.Name)
+		matchedName := false
+		for _, kw := range namePattern {
+			if strings.Contains(lowerName, strings.ToLower(kw)) {
+				matchedName = true
+				break
+			}
+		}
+		if !matchedName {
+			continue
 		}
 
 		localPath := filepath.Join(localFolder, entry.Name)
