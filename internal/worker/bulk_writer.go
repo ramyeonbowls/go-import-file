@@ -205,6 +205,124 @@ func bulkUpsertViaTempTable(
 }
 
 /* =========================
+   BULK UPSERT VIA TEMP TABLE
+========================= */
+
+func bulkUpsertViaTempTableRowNumber(
+	ctx context.Context,
+	db *sql.DB,
+	targetTable string,
+	tempTable string,
+	cols []string,
+	tempTableDDL string,
+	joinCondition string,
+	updateSetClause string,
+	partionColumns string,
+	data <-chan func() []any,
+	done chan<- struct{},
+	l Logger,
+) error {
+	defer close(done)
+
+	l.Printf("[BULK-UPSERT][%s] START", targetTable)
+
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// === SQL Server safety & performance ===
+	if _, err := tx.Exec(`SET XACT_ABORT ON;`); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(tempTableDDL); err != nil {
+		return err
+	}
+
+	stmt, err := tx.Prepare(mssql.CopyIn(tempTable, mssql.BulkOptions{}, cols...))
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	var (
+		rowNum        int64
+		localInserted int64
+	)
+
+	for rowFn := range data {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
+		rowNum++
+		if _, err := stmt.Exec(rowFn()...); err != nil {
+			return err
+		}
+
+		localInserted++
+		if localInserted%1000 == 0 {
+			atomic.AddInt64(&metrics.InsertedRows, localInserted)
+			localInserted = 0
+		}
+	}
+
+	if localInserted > 0 {
+		atomic.AddInt64(&metrics.InsertedRows, localInserted)
+	}
+
+	if _, err := stmt.Exec(); err != nil {
+		return err
+	}
+
+	// === Cache immutable SQL parts ===
+	insertCols := strings.Join(cols, ", ")
+	insertVals := make([]string, len(cols))
+	for i, c := range cols {
+		insertVals[i] = "src." + c
+	}
+	insertValsSQL := strings.Join(insertVals, ", ")
+
+	mergeSQL := `
+		SET NOCOUNT ON;
+
+		;WITH src AS (
+			SELECT
+				` + insertValsSQL + `
+			FROM (
+				SELECT DISTINCT
+					ROW_NUMBER() OVER (PARTITION BY ` + partionColumns + ` ORDER BY ` + partionColumns + `) AS RowNum,
+					` + insertValsSQL + `
+				FROM ` + tempTable + ` as src
+			) as src
+			WHERE src.RowNum = 1
+		)
+		MERGE ` + targetTable + ` WITH (HOLDLOCK) AS tgt
+		USING src
+			ON ` + joinCondition + `
+		WHEN MATCHED THEN
+			UPDATE SET ` + updateSetClause + `
+		WHEN NOT MATCHED BY TARGET THEN
+			INSERT (` + insertCols + `)
+			VALUES (` + insertValsSQL + `);
+	`
+
+	if _, err := tx.Exec(mergeSQL); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(`DROP TABLE ` + tempTable); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+/* =========================
    PUBLIC BULK WRITERS
 ========================= */
 
@@ -2107,6 +2225,957 @@ func Bulk07(ctx context.Context, db *sql.DB, ch <-chan model.MTop, done chan<- s
 				r.TopDays,
 				r.CoreFilename,
 				r.CoreProcessdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk120(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesDpZdhdr, done chan<- struct{}) {
+	l, _ := logger.NewDailyWorkerLogger("bulk120")
+	rows := make(chan func() []any, 2048)
+
+	go bulkInsert(ctx, db, "dbo.DP_ZDHDR",
+		[]string{
+			"PROCESS_ID",
+			"BLOCKID",
+			"BLOCKNAME",
+			"CONDITIONTYPE",
+			"KEYCOMBINATION",
+			"KEYCOMB",
+			"SALESORGANIZATION",
+			"DISTRIBUTIONCHANNEL",
+			"SALESOFFICE",
+			"DIVISION",
+			"PAYMENTTERM",
+			"CUSTOMER",
+			"MATERIAL",
+			"ATTRIBUT2",
+			"VALIDUNTIL",
+			"VALIDFROM",
+			"CONDITIONRECORDNO",
+			"SCALE",
+			"FILENAME",
+			"LINENUMBER",
+			"CDATE",
+		},
+		rows, done, l,
+	)
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.BlockName,
+				r.ConditionType,
+				r.Keycombination,
+				r.Keycomb,
+				r.SalesOrganization,
+				r.DistributionChannel,
+				r.SalesOffice,
+				r.Division,
+				r.PaymentTerm,
+				r.Customer,
+				r.Material,
+				r.Attribut2,
+				r.ValidUntil,
+				r.ValidFrom,
+				r.ConditionRecordno,
+				r.Scale,
+				r.FileName,
+				r.LineNumber,
+				r.CDate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk121(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesDpZditm, done chan<- struct{}) {
+	l, _ := logger.NewDailyWorkerLogger("bulk121")
+	rows := make(chan func() []any, 2048)
+
+	go bulkInsert(ctx, db, "dbo.DP_ZDITM",
+		[]string{
+			"PROCESS_ID",
+			"BLOCKID",
+			"BLOCKNAME",
+			"CONDITIONTYPE",
+			"KEYCOMBINATION",
+			"KEYCOMB",
+			"SALESORGANIZATION",
+			"DISTRIBUTIONCHANNEL",
+			"SALESOFFICE",
+			"DIVISION",
+			"SOLDTOPARTY",
+			"PRICINGREFMATL",
+			"PAYMENTTERMS",
+			"INDUSTRYCODE3",
+			"INDUSTRYCODE4",
+			"INDUSTRYCODE5",
+			"ATTRIBUTE1",
+			"ATTRIBUTE2",
+			"MATERIAL",
+			"SALESUNIT",
+			"VALIDFROM",
+			"VALIDUNTIL",
+			"CONDITIONRECORDNO",
+			"SCALE",
+			"FILENAME",
+			"LINENUMBER",
+			"CDATE",
+		},
+		rows, done, l,
+	)
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.BlockName,
+				r.ConditionType,
+				r.KeyCombination,
+				r.KeyComb,
+				r.SalesOrganization,
+				r.DistributionChannel,
+				r.SalesOffice,
+				r.Division,
+				r.SoldToParty,
+				r.PricingRefMatl,
+				r.PaymentTerms,
+				r.IndustryCode3,
+				r.IndustryCode4,
+				r.IndustryCode5,
+				r.Attribute1,
+				r.Attribute2,
+				r.Material,
+				r.SalesUnit,
+				r.ValidFrom,
+				r.ValidUntil,
+				r.ConditionRecordNo,
+				r.Scale,
+				r.FileName,
+				r.LineNumber,
+				r.CDate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk122(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesDpZddet, done chan<- struct{}) {
+	l, _ := logger.NewDailyWorkerLogger("bulk122")
+	rows := make(chan func() []any, 2048)
+
+	go bulkInsert(ctx, db, "dbo.DP_ZDDET",
+		[]string{
+			"PROCESS_ID",
+			"BLOCKID",
+			"BLOCKNAME",
+			"CONDITIONRECORDNO",
+			"AMOUNT",
+			"UNIT",
+			"PER",
+			"UOM",
+			"SCALE",
+			"FILENAME",
+			"LINENUMBER",
+			"CDATE",
+		},
+		rows, done, l,
+	)
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.BlockName,
+				r.ConditionRecordNo,
+				r.Amount,
+				r.Unit,
+				r.Per,
+				r.Uom,
+				r.Scale,
+				r.Filename,
+				r.Linenumber,
+				r.Cdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk123(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesDpZpmix, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk123")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTableRowNumber(
+			ctx,
+			db,
+			"dbo.DP_ZPMIX",
+			"#tmp_DP_ZPMIX",
+			[]string{"PROCESS_ID", "BLOCKID", "BLOCKNAME", "CTYP", "KEYCOMBINATION", "SORG", "DCHL", "SOFF", "DV", "CUSTOMER", "INDCODE2", "INDCODE3", "INDCODE4", "INDCODE5", "PL", "PAYT", "MATERIAL", "VALIDFROM", "VALIDUNTIL", "PROMOID", "LINEITEM", "FILENAME", "LINENUMBER", "CDATE", "MUSTBUY", "EXCLUDE", "SPLIT", "AMOUNTX", "RANGEX", "WITHMATERIAL", "KELIPATAN", "V_KELIPATAN", "ATTR_PRD_LV2", "ATTR_PRD_LV3", "FL_CUST_EXC", "CUST_EXC", "FL_HD", "PERBANDINGAN", "V_PERBANDINGAN1", "V_PERBANDINGAN2"},
+			`
+			CREATE TABLE #tmp_DP_ZPMIX (
+				PROCESS_ID NVARCHAR(50),
+				BLOCKID NVARCHAR(3),
+				BLOCKNAME NVARCHAR(50),
+				CTYP NVARCHAR(20),
+				KEYCOMBINATION NVARCHAR(20),
+				SORG NVARCHAR(20),
+				DCHL NVARCHAR(20),
+				SOFF NVARCHAR(20),
+				DV NVARCHAR(20),
+				CUSTOMER NVARCHAR(20),
+				INDCODE2 NVARCHAR(20),
+				INDCODE3 NVARCHAR(20),
+				INDCODE4 NVARCHAR(20),
+				INDCODE5 NVARCHAR(20),
+				PL NVARCHAR(20),
+				PAYT NVARCHAR(20),
+				MATERIAL NVARCHAR(20),
+				VALIDFROM DATE,
+				VALIDUNTIL DATE,
+				PROMOID NVARCHAR(20),
+				LINEITEM INT,
+				FILENAME NVARCHAR(200),
+				LINENUMBER BIGINT,
+				CDATE DATETIME,
+				MUSTBUY NVARCHAR(5),
+				EXCLUDE NVARCHAR(5),
+				SPLIT NVARCHAR(5),
+				AMOUNTX NVARCHAR(1),
+				RANGEX NVARCHAR(5),
+				WITHMATERIAL NVARCHAR(5),
+				KELIPATAN NVARCHAR(5),
+				V_KELIPATAN INT,
+				ATTR_PRD_LV2 NVARCHAR(20),
+				ATTR_PRD_LV3 NVARCHAR(20),
+				FL_CUST_EXC NVARCHAR(20),
+				CUST_EXC NVARCHAR(20),
+				FL_HD NVARCHAR(100),
+				PERBANDINGAN NVARCHAR(20),
+				V_PERBANDINGAN1 INT,
+				V_PERBANDINGAN2 INT
+			)
+			`,
+			"tgt.BLOCKID = src.BLOCKID AND tgt.PROMOID = src.PROMOID AND tgt.LINEITEM = src.LINEITEM AND tgt.CTYP = src.CTYP AND tgt.KEYCOMBINATION = src.KEYCOMBINATION AND tgt.SORG = src.SORG AND tgt.DCHL = src.DCHL AND tgt.SOFF = src.SOFF AND tgt.DV = src.DV AND tgt.CUSTOMER = src.CUSTOMER AND tgt.PL = src.PL AND tgt.PAYT = src.PAYT AND tgt.MATERIAL = src.MATERIAL",
+			`
+			tgt.PROCESS_ID = src.PROCESS_ID,
+			tgt.BLOCKID = src.BLOCKID,
+			tgt.BLOCKNAME = src.BLOCKNAME,
+			tgt.CTYP = src.CTYP,
+			tgt.KEYCOMBINATION = src.KEYCOMBINATION,
+			tgt.SORG = src.SORG,
+			tgt.DCHL = src.DCHL,
+			tgt.SOFF = src.SOFF,
+			tgt.DV = src.DV,
+			tgt.CUSTOMER = src.CUSTOMER,
+			tgt.INDCODE2 = src.INDCODE2,
+			tgt.INDCODE3 = src.INDCODE3,
+			tgt.INDCODE4 = src.INDCODE4,
+			tgt.INDCODE5 = src.INDCODE5,
+			tgt.PL = src.PL,
+			tgt.PAYT = src.PAYT,
+			tgt.MATERIAL = src.MATERIAL,
+			tgt.VALIDFROM = src.VALIDFROM,
+			tgt.VALIDUNTIL = src.VALIDUNTIL,
+			tgt.PROMOID = src.PROMOID,
+			tgt.LINEITEM = src.LINEITEM,
+			tgt.FILENAME = src.FILENAME,
+			tgt.LINENUMBER = src.LINENUMBER,
+			tgt.CDATE = src.CDATE,
+			tgt.MUSTBUY = src.MUSTBUY,
+			tgt.EXCLUDE = src.EXCLUDE,
+			tgt.SPLIT = src.SPLIT,
+			tgt.AMOUNTX = src.AMOUNTX,
+			tgt.RANGEX = src.RANGEX,
+			tgt.WITHMATERIAL = src.WITHMATERIAL,
+			tgt.KELIPATAN = src.KELIPATAN,
+			tgt.V_KELIPATAN = src.V_KELIPATAN,
+			tgt.ATTR_PRD_LV2 = src.ATTR_PRD_LV2,
+			tgt.ATTR_PRD_LV3 = src.ATTR_PRD_LV3,
+			tgt.FL_CUST_EXC = src.FL_CUST_EXC,
+			tgt.CUST_EXC = src.CUST_EXC,
+			tgt.FL_HD = src.FL_HD,
+			tgt.PERBANDINGAN = src.PERBANDINGAN,
+			tgt.V_PERBANDINGAN1 = src.V_PERBANDINGAN1,
+			tgt.V_PERBANDINGAN2 = src.V_PERBANDINGAN2
+			`,
+			"src.BLOCKID, src.PROMOID, src.LINEITEM, src.CTYP, src.KEYCOMBINATION, src.SORG, src.DCHL, src.SOFF, src.DV, src.CUSTOMER, src.PL, src.PAYT, src.MATERIAL",
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk123][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.Blockname,
+				r.Ctyp,
+				r.KeyCombination,
+				r.Sorg,
+				r.Dchl,
+				r.Soff,
+				r.Dv,
+				r.Customer,
+				r.Indcode2,
+				r.Indcode3,
+				r.Indcode4,
+				r.Indcode5,
+				r.Pl,
+				r.Payt,
+				r.Material,
+				r.ValidFrom,
+				r.ValidUntil,
+				r.PromoId,
+				r.LineItem,
+				r.FileName,
+				r.LineNumber,
+				r.Cdate,
+				r.MustBuy,
+				r.Exclude,
+				r.Split,
+				r.Amountx,
+				r.Rangex,
+				r.WithMaterial,
+				r.Kelipatan,
+				r.VKelipatan,
+				r.AttrPrdLv2,
+				r.AttrPrdLv3,
+				r.FlCustExc,
+				r.CustExc,
+				r.FlHd,
+				r.Perbandingan,
+				r.VPerbandingan1,
+				r.VPerbandingan2,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk123Promo(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesDpZpmix, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk123Promo")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTableRowNumber(
+			ctx,
+			db,
+			"dbo.DP_FG_CHECK",
+			"#tmp_DP_FG_CHECK",
+			[]string{"PROCESS_ID", "BLOCKID", "BLOCKNAME", "PROMOID", "DDATE", "CDATE"},
+			`
+			CREATE TABLE #tmp_DP_FG_CHECK (
+				PROCESS_ID NVARCHAR(255),
+				BLOCKID NVARCHAR(255),
+				BLOCKNAME NVARCHAR(255),
+				PROMOID NVARCHAR(255),
+				DDATE DATE,
+				CDATE DATETIME
+			)
+			`,
+			"tgt.BLOCKID = src.BLOCKID AND tgt.PROMOID = src.PROMOID AND tgt.DDATE = src.DDATE",
+			`
+			tgt.PROCESS_ID = src.PROCESS_ID,
+			tgt.BLOCKID = src.BLOCKID,
+			tgt.BLOCKNAME = src.BLOCKNAME,
+			tgt.PROMOID = src.PROMOID,
+			tgt.DDATE = src.DDATE,
+			tgt.CDATE = src.CDATE
+			`,
+			"src.BLOCKID, src.PROMOID, src.DDATE",
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk123Promo][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.Blockname,
+				r.PromoId,
+				r.Cdate,
+				r.Cdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk124(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesDpZscreg, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk124")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTableRowNumber(
+			ctx,
+			db,
+			"dbo.DP_ZSCREG",
+			"#tmp_DP_ZSCREG",
+			[]string{
+				"PROCESS_ID",
+				"BLOCKID",
+				"BLOCKNAME",
+				"CONDITIONRECORDNO",
+				"NO",
+				"LSNO",
+				"DISCREGHDRQTY",
+				"AMOUNT",
+				"UNIT",
+				"FILENAME",
+				"LINENUMBER",
+				"CDATE",
+			},
+			`
+			CREATE TABLE #tmp_DP_ZSCREG (
+				PROCESS_ID NVARCHAR(50),
+				BLOCKID NVARCHAR(3),
+				BLOCKNAME NVARCHAR(50),
+				CONDITIONRECORDNO NVARCHAR(20),
+				NO INT,
+				LSNO INT,
+				DISCREGHDRQTY DECIMAL(19,4),
+				AMOUNT DECIMAL(19,4),
+				UNIT NVARCHAR(25),
+				FILENAME NVARCHAR(200),
+				LINENUMBER BIGINT,
+				CDATE DATETIME
+			)
+			`,
+			"tgt.BLOCKID = src.BLOCKID AND tgt.CONDITIONRECORDNO = src.CONDITIONRECORDNO AND tgt.DISCREGHDRQTY = src.DISCREGHDRQTY",
+			`
+			tgt.PROCESS_ID = src.PROCESS_ID,
+			tgt.BLOCKID = src.BLOCKID,
+			tgt.BLOCKNAME = src.BLOCKNAME,
+			tgt.CONDITIONRECORDNO = src.CONDITIONRECORDNO,
+			tgt.NO = src.NO,
+			tgt.LSNO = src.LSNO,
+			tgt.DISCREGHDRQTY = src.DISCREGHDRQTY,
+			tgt.AMOUNT = src.AMOUNT,
+			tgt.UNIT = src.UNIT,
+			tgt.FILENAME = src.FILENAME,
+			tgt.LINENUMBER = src.LINENUMBER,
+			tgt.CDATE = src.CDATE
+			`,
+			"src.BLOCKID, src.CONDITIONRECORDNO, src.DISCREGHDRQTY",
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk124][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.BlockName,
+				r.ConditionRecordNo,
+				r.No,
+				r.Lsno,
+				r.DiscRegHdrQty,
+				r.Amount,
+				r.Unit,
+				r.FileName,
+				r.LineNumber,
+				r.Cdate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk125(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesDpZscmix, done chan<- struct{}) {
+	l, _ := logger.NewDailyWorkerLogger("bulk125")
+	rows := make(chan func() []any, 2048)
+
+	go bulkInsert(ctx, db, "dbo.DP_ZSCMIX",
+		[]string{
+			"PROCESS_ID",
+			"BLOCKID",
+			"BLOCKNAME",
+			"PROMOID",
+			"LINEITEM",
+			"SCALEQTY",
+			"BUN",
+			"AMOUNT",
+			"UNIT",
+			"PER",
+			"UOM",
+			"FILENAME",
+			"LINENUMBER",
+			"CDATE",
+			"SCALEQTYTO",
+			"AMOUNTSCL",
+			"AMOUNTSCLTO",
+			"UNITSCL",
+			"MATNRKENA",
+		},
+		rows, done, l,
+	)
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.BlockName,
+				r.PromoId,
+				r.LineItem,
+				r.ScaleQty,
+				r.Bun,
+				r.Amount,
+				r.Unit,
+				r.Per,
+				r.Uom,
+				r.FileName,
+				r.LineNumber,
+				r.Cdate,
+				r.ScaleQtyTo,
+				r.AmountScl,
+				r.AmountSclTo,
+				r.UnitScl,
+				r.MatnrKena,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk126(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesDpZ00001, done chan<- struct{}) {
+	l, _ := logger.NewDailyWorkerLogger("bulk126")
+	rows := make(chan func() []any, 2048)
+
+	go bulkInsert(ctx, db, "dbo.DP_Z00001",
+		[]string{
+			"PROCESS_ID",
+			"BLOCKID",
+			"BLOCKNAME",
+			"STEP",
+			"COUNTER",
+			"CONDITIONTYPE",
+			"DESCRIPTION",
+			"VALIDFROM",
+			"VALIDTO",
+			"CONDGRP",
+			"DRULE",
+			"FILENAME",
+			"LINENUMBER",
+			"CDATE",
+			"DISCTYPE",
+		},
+		rows, done, l,
+	)
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.BlockName,
+				r.Step,
+				r.Counter,
+				r.ConditionType,
+				r.Description,
+				r.ValidFrom,
+				r.ValidTo,
+				r.CondGrp,
+				r.Drule,
+				r.FileName,
+				r.LineNumber,
+				r.Cdate,
+				r.DiscType,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk130(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesFgZdhdr, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk130")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTableRowNumber(
+			ctx,
+			db,
+			"dbo.FG_ZDHDR",
+			"#tmp_FG_ZDHDR",
+			[]string{
+				"PROCESS_ID",
+				"BLOCKID",
+				"BLOCKNAME",
+				"CONDITIONTYPE",
+				"KEYCOMBINATION",
+				"KEYCOMB",
+				"SALESORGANIZATION",
+				"DISTRIBUTIONCHANNEL",
+				"DIVISION",
+				"SALESOFFICE",
+				"PRICELISTTYPE",
+				"ATTRIBUTE1",
+				"INDUSTRYCODE3",
+				"INDUSTRYCODE4",
+				"INDUSTRYCODE5",
+				"SOLDTOPARTY",
+				"MATERIAL",
+				"VALIDUNTIL",
+				"VALIDFROM",
+				"CONDITIONRECORDNO",
+				"PROMOID",
+				"PROMOITEM",
+				"SCALE",
+				"FILENAME",
+				"LINENUMBER",
+				"CDATE",
+				"MUSTBUY",
+				"KELIPATAN",
+				"F_KELIPATAN",
+				"WITHQTY",
+				"QTY",
+				"UOM",
+				"ZTERM",
+				"KATR2",
+				"KATR3",
+				"PERBANDINGAN",
+				"F_PERBANDINGAN1",
+				"F_PERBANDINGAN2",
+				"AMOUNTX",
+			},
+			`
+			CREATE TABLE #tmp_FG_ZDHDR (
+				PROCESS_ID NVARCHAR(50),
+				BLOCKID NVARCHAR(3),
+				BLOCKNAME NVARCHAR(50),
+				CONDITIONTYPE NVARCHAR(20),
+				KEYCOMBINATION NVARCHAR(20),
+				KEYCOMB NVARCHAR(180),
+				SALESORGANIZATION NVARCHAR(20),
+				DISTRIBUTIONCHANNEL NVARCHAR(20),
+				DIVISION NVARCHAR(20),
+				SALESOFFICE NVARCHAR(20),
+				PRICELISTTYPE NVARCHAR(20),
+				ATTRIBUTE1 NVARCHAR(20),
+				INDUSTRYCODE3 NVARCHAR(20),
+				INDUSTRYCODE4 NVARCHAR(20),
+				INDUSTRYCODE5 NVARCHAR(20),
+				SOLDTOPARTY NVARCHAR(20),
+				MATERIAL NVARCHAR(20),
+				VALIDUNTIL DATE,
+				VALIDFROM DATE,
+				CONDITIONRECORDNO NVARCHAR(20),
+				PROMOID NVARCHAR(20),
+				PROMOITEM NVARCHAR(20),
+				[SCALE] NVARCHAR(3),
+				FILENAME NVARCHAR(100),
+				LINENUMBER BIGINT,
+				CDATE DATETIME,
+				MUSTBUY NVARCHAR(5),
+				KELIPATAN NVARCHAR(5),
+				F_KELIPATAN INT,
+				WITHQTY NVARCHAR(20),
+				QTY INT,
+				UOM FLOAT,
+				ZTERM NVARCHAR(5),
+				KATR2 NVARCHAR(20),
+				KATR3 NVARCHAR(20),
+				PERBANDINGAN NVARCHAR(20),
+				F_PERBANDINGAN1 INT,
+				F_PERBANDINGAN2 INT,
+				AMOUNTX NVARCHAR(1)
+			)
+			`,
+			"tgt.BLOCKID = src.BLOCKID AND tgt.PROMOID = src.PROMOID AND tgt.PROMOITEM = src.PROMOITEM AND tgt.CONDITIONRECORDNO = src.CONDITIONRECORDNO AND tgt.CONDITIONTYPE = src.CONDITIONTYPE AND tgt.KEYCOMBINATION = src.KEYCOMBINATION AND tgt.SALESORGANIZATION = src.SALESORGANIZATION AND tgt.DISTRIBUTIONCHANNEL = src.DISTRIBUTIONCHANNEL AND tgt.DIVISION = src.DIVISION AND tgt.SALESOFFICE = src.SALESOFFICE AND tgt.PRICELISTTYPE = src.PRICELISTTYPE AND tgt.ATTRIBUTE1 = src.ATTRIBUTE1 AND tgt.INDUSTRYCODE3 = src.INDUSTRYCODE3 AND tgt.INDUSTRYCODE4 = src.INDUSTRYCODE4 AND tgt.INDUSTRYCODE5 = src.INDUSTRYCODE5 AND tgt.SOLDTOPARTY = src.SOLDTOPARTY AND tgt.MATERIAL = src.MATERIAL AND tgt.ZTERM = src.ZTERM AND tgt.KATR2 = src.KATR2 AND tgt.KATR3 = src.KATR3",
+			`
+				tgt.PROCESS_ID = src.PROCESS_ID,
+				tgt.BLOCKID = src.BLOCKID,
+				tgt.BLOCKNAME = src.BLOCKNAME,
+				tgt.CONDITIONTYPE = src.CONDITIONTYPE,
+				tgt.KEYCOMBINATION = src.KEYCOMBINATION,
+				tgt.KEYCOMB = src.KEYCOMB,
+				tgt.SALESORGANIZATION = src.SALESORGANIZATION,
+				tgt.DISTRIBUTIONCHANNEL = src.DISTRIBUTIONCHANNEL,
+				tgt.DIVISION = src.DIVISION,
+				tgt.SALESOFFICE = src.SALESOFFICE,
+				tgt.PRICELISTTYPE = src.PRICELISTTYPE,
+				tgt.ATTRIBUTE1 = src.ATTRIBUTE1,
+				tgt.INDUSTRYCODE3 = src.INDUSTRYCODE3,
+				tgt.INDUSTRYCODE4 = src.INDUSTRYCODE4,
+				tgt.INDUSTRYCODE5 = src.INDUSTRYCODE5,
+				tgt.SOLDTOPARTY = src.SOLDTOPARTY,
+				tgt.MATERIAL = src.MATERIAL,
+				tgt.VALIDUNTIL = src.VALIDUNTIL,
+				tgt.VALIDFROM = src.VALIDFROM,
+				tgt.CONDITIONRECORDNO = src.CONDITIONRECORDNO,
+				tgt.PROMOID = src.PROMOID,
+				tgt.PROMOITEM = src.PROMOITEM,
+				tgt.SCALE = src.SCALE,
+				tgt.FILENAME = src.FILENAME,
+				tgt.LINENUMBER = src.LINENUMBER,
+				tgt.CDATE = src.CDATE,
+				tgt.MUSTBUY = src.MUSTBUY,
+				tgt.KELIPATAN = src.KELIPATAN,
+				tgt.F_KELIPATAN = src.F_KELIPATAN,
+				tgt.WITHQTY = src.WITHQTY,
+				tgt.QTY = src.QTY,
+				tgt.UOM = src.UOM,
+				tgt.ZTERM = src.ZTERM,
+				tgt.KATR2 = src.KATR2,
+				tgt.KATR3 = src.KATR3,
+				tgt.PERBANDINGAN = src.PERBANDINGAN,
+				tgt.F_PERBANDINGAN1 = src.F_PERBANDINGAN1,
+				tgt.F_PERBANDINGAN2 = src.F_PERBANDINGAN2,
+				tgt.AMOUNTX = src.AMOUNTX
+			`,
+			"src.BLOCKID, src.PROMOID, src.PROMOITEM, src.CONDITIONRECORDNO, src.CONDITIONTYPE, src.KEYCOMBINATION, src.SALESORGANIZATION, src.DISTRIBUTIONCHANNEL, src.DIVISION, src.SALESOFFICE, src.PRICELISTTYPE, src.ATTRIBUTE1, src.INDUSTRYCODE3, src.INDUSTRYCODE4, src.INDUSTRYCODE5, src.SOLDTOPARTY, src.MATERIAL, src.ZTERM, src.KATR2, src.KATR3",
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk130][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.BlockName,
+				r.ConditionType,
+				r.KeyCombination,
+				r.KeyComb,
+				r.SalesOrganization,
+				r.DistributionChannel,
+				r.Division,
+				r.SalesOffice,
+				r.PricelistType,
+				r.Attribute1,
+				r.IndustryCode3,
+				r.IndustryCode4,
+				r.IndustryCode5,
+				r.SoldToParty,
+				r.Material,
+				r.ValidUntil,
+				r.ValidFrom,
+				r.ConditionRecordNo,
+				r.PromoId,
+				r.PromoItem,
+				r.Scale,
+				r.FileName,
+				r.LineNumber,
+				r.CDate,
+				r.MustBuy,
+				r.Kelipatan,
+				r.FKelipatan,
+				r.WithQty,
+				r.Uom,
+				r.Qty,
+				r.Zterm,
+				r.Katr2,
+				r.Katr3,
+				r.Perbandingan,
+				r.FPerbandingan1,
+				r.FPerbandingan2,
+				r.Amountx,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk130Promo(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesFgZdhdr, done chan<- struct{}) {
+	l, err := logger.NewDailyWorkerLogger("bulk130Promo")
+	if err != nil {
+		panic(err)
+	}
+
+	rows := make(chan func() []any, 1000)
+
+	go func() {
+		err := bulkUpsertViaTempTableRowNumber(
+			ctx,
+			db,
+			"dbo.DP_FG_CHECK",
+			"#tmp_DP_FG_CHECK",
+			[]string{"PROCESS_ID", "BLOCKID", "BLOCKNAME", "PROMOID", "DDATE", "CDATE"},
+			`
+			CREATE TABLE #tmp_DP_FG_CHECK (
+				PROCESS_ID NVARCHAR(255),
+				BLOCKID NVARCHAR(255),
+				BLOCKNAME NVARCHAR(255),
+				PROMOID NVARCHAR(255),
+				DDATE DATE,
+				CDATE DATETIME
+			)
+			`,
+			"tgt.BLOCKID = src.BLOCKID AND tgt.PROMOID = src.PROMOID AND tgt.DDATE = src.DDATE",
+			`
+			tgt.PROCESS_ID = src.PROCESS_ID,
+			tgt.BLOCKID = src.BLOCKID,
+			tgt.BLOCKNAME = src.BLOCKNAME,
+			tgt.PROMOID = src.PROMOID,
+			tgt.DDATE = src.DDATE,
+			tgt.CDATE = src.CDATE
+			`,
+			"src.BLOCKID, src.PROMOID, src.DDATE",
+			rows, done, l,
+		)
+
+		if err != nil {
+			l.Printf("[Bulk123Promo][UPSERT] failed: %v", err)
+		}
+	}()
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.BlockName,
+				r.PromoId,
+				r.CDate,
+				r.CDate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk131(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesFgZfrdet, done chan<- struct{}) {
+	l, _ := logger.NewDailyWorkerLogger("bulk131")
+	rows := make(chan func() []any, 2048)
+
+	go bulkInsert(ctx, db, "dbo.FG_ZFRDET",
+		[]string{
+			"PROCESS_ID",
+			"BLOCKID",
+			"BLOCKNAME",
+			"CONDITIONRECORDNO",
+			"MINIMUMQTY",
+			"FREEGOODSQTY",
+			"UOMFREEGOODS",
+			"FREEGOODSAGRREDQTY",
+			"UOMFREEGOODSAGRRED",
+			"ADDITIONALMATERIAL",
+			"FILENAME",
+			"LINENUMBER",
+			"CDATE",
+		},
+		rows, done, l,
+	)
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.BlockName,
+				r.ConditionRecordNo,
+				r.MinimumQty,
+				r.FreeGoodsQty,
+				r.UomFreeGoods,
+				r.FreeGoodsAgrredQty,
+				r.UomFreeGoodsAgrred,
+				r.AdditionalMaterial,
+				r.FileName,
+				r.LineNumber,
+				r.CDate,
+			}
+		}
+	}
+	close(rows)
+}
+
+func Bulk132(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesFgZfrmix, done chan<- struct{}) {
+	l, _ := logger.NewDailyWorkerLogger("bulk132")
+	rows := make(chan func() []any, 2048)
+
+	go bulkInsert(ctx, db, "dbo.FG_ZFRMIX",
+		[]string{
+			"PROCESS_ID",
+			"BLOCKID",
+			"BLOCKNAME",
+			"PROMOID",
+			"PROMOITEM",
+			"SCALEQTY",
+			"SCALEQTYUOM",
+			"MATERIAL",
+			"QTY",
+			"QTYUOM",
+			"FILENAME",
+			"LINENUMBER",
+			"CDATE",
+			"AMOUNTSCLF",
+			"CURRENCY",
+		},
+		rows, done, l,
+	)
+
+	for r := range ch {
+		r := r
+		rows <- func() []any {
+			return []any{
+				r.ProcessId,
+				r.BlockId,
+				r.BlockName,
+				r.PromoId,
+				r.PromoItem,
+				r.ScaleQty,
+				r.ScaleQtyUom,
+				r.Material,
+				r.Qty,
+				r.QtyUom,
+				r.FileName,
+				r.LineNumber,
+				r.CDate,
+				r.AmountSclf,
+				r.Currency,
 			}
 		}
 	}

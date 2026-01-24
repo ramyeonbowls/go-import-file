@@ -30,3 +30,57 @@ func ParseNumber(raw string) (float64, error) {
 
 	return strconv.ParseFloat(raw, 64)
 }
+
+func ParseAccountingInt(s string) (int, error) {
+	s = strings.TrimSpace(s)
+
+	negative := strings.HasSuffix(s, "-")
+
+	s = strings.ReplaceAll(s, ".", "")
+	s = strings.ReplaceAll(s, "-", "")
+
+	v, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, err
+	}
+
+	if negative {
+		v = -v
+	}
+
+	return v, nil
+}
+
+func ParseAccountingFloat(s string) (float64, error) {
+	s = strings.TrimSpace(s)
+
+	negative := false
+
+	// Cek minus di belakang atau depan
+	if strings.HasSuffix(s, "-") {
+		negative = true
+		s = strings.TrimSuffix(s, "-")
+	}
+
+	if strings.HasPrefix(s, "-") {
+		negative = true
+		s = strings.TrimPrefix(s, "-")
+	}
+
+	// Hilangkan thousand separator (.)
+	s = strings.ReplaceAll(s, ".", "")
+
+	// Ganti decimal separator (,) -> .
+	s = strings.ReplaceAll(s, ",", ".")
+
+	v, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	if negative {
+		v = -v
+	}
+
+	return v, nil
+}

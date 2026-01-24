@@ -41,6 +41,18 @@ func BuildBlockHandlers(
 	ch104 chan<- model.MSubBeat,
 	ch47 chan<- model.MSubBrand,
 	ch07 chan<- model.MTop,
+	ch120 chan<- model.SpProsesDpZdhdr,
+	ch121 chan<- model.SpProsesDpZditm,
+	ch122 chan<- model.SpProsesDpZddet,
+	ch123 chan<- model.SpProsesDpZpmix,
+	ch123Promo chan<- model.SpProsesDpZpmix,
+	ch124 chan<- model.SpProsesDpZscreg,
+	ch125 chan<- model.SpProsesDpZscmix,
+	ch126 chan<- model.SpProsesDpZ00001,
+	ch130 chan<- model.SpProsesFgZdhdr,
+	ch130Promo chan<- model.SpProsesFgZdhdr,
+	ch131 chan<- model.SpProsesFgZfrdet,
+	ch132 chan<- model.SpProsesFgZfrmix,
 ) map[string]BlockHandler {
 
 	return map[string]BlockHandler{
@@ -73,5 +85,21 @@ func BuildBlockHandlers(
 		"104": &Block104Handler{Out: ch104},
 		"47":  &Block47Handler{Out: ch47},
 		"07":  &Block07Handler{Out: ch07},
+		"120": &Block120Handler{Out: ch120},
+		"121": &Block121Handler{Out: ch121},
+		"122": &Block122Handler{Out: ch122},
+		"123": &Block123Handler{
+			OutZpmix: ch123,
+			OutFg:    ch123Promo,
+		},
+		"124": &Block124Handler{Out: ch124},
+		"125": &Block125Handler{Out: ch125},
+		"126": &Block126Handler{Out: ch126},
+		"130": &Block130Handler{
+			OutZdhdr: ch130,
+			OutFg:    ch130Promo,
+		},
+		"131": &Block131Handler{Out: ch131},
+		"132": &Block132Handler{Out: ch132},
 	}
 }

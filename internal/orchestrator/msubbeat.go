@@ -100,6 +100,18 @@ func RunMSubBeat(
 			ch104,
 			nil,
 			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
+			nil,
 		)
 	}
 

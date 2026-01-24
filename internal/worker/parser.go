@@ -50,10 +50,22 @@ func ParseWorker(
 	ch104 chan<- model.MSubBeat,
 	ch47 chan<- model.MSubBrand,
 	ch07 chan<- model.MTop,
+	ch120 chan<- model.SpProsesDpZdhdr,
+	ch121 chan<- model.SpProsesDpZditm,
+	ch122 chan<- model.SpProsesDpZddet,
+	ch123 chan<- model.SpProsesDpZpmix,
+	ch123Promo chan<- model.SpProsesDpZpmix,
+	ch124 chan<- model.SpProsesDpZscreg,
+	ch125 chan<- model.SpProsesDpZscmix,
+	ch126 chan<- model.SpProsesDpZ00001,
+	ch130 chan<- model.SpProsesFgZdhdr,
+	ch130Promo chan<- model.SpProsesFgZdhdr,
+	ch131 chan<- model.SpProsesFgZfrdet,
+	ch132 chan<- model.SpProsesFgZfrmix,
 ) {
 	defer wg.Done()
 
-	handlers := BuildBlockHandlers(ch16, ch15, ch01, ch25, ch02, ch05, ch20, ch43, ch35, ch39, ch108, ch103, ch44, ch112, ch111, ch03, ch102, ch46, ch113, ch105, ch110, ch101, ch19, ch23, ch109, ch22, ch104, ch47, ch07)
+	handlers := BuildBlockHandlers(ch16, ch15, ch01, ch25, ch02, ch05, ch20, ch43, ch35, ch39, ch108, ch103, ch44, ch112, ch111, ch03, ch102, ch46, ch113, ch105, ch110, ch101, ch19, ch23, ch109, ch22, ch104, ch47, ch07, ch120, ch121, ch122, ch123, ch123Promo, ch124, ch125, ch126, ch130, ch130Promo, ch131, ch132)
 	cfg := config.Load()
 
 	for job := range jobs {

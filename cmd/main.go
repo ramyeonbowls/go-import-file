@@ -480,6 +480,52 @@ func main() {
 				},
 			},
 		},
+		/* "SDEAL": {
+			{
+				Name: "IMPORT SDEAL",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunSalesDeal(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+		}, */
+		"SDEAL": {
+			{
+				Name: "TRUNCATE SDEAL",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunSalesDealTruncate(
+						ctx,
+						dbConn,
+						processID,
+					)
+				},
+			},
+			{
+				Name: "IMPORT SDEAL",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunSalesDeal(
+						ctx,
+						dbConn,
+						cfg.FilePath,
+						processID,
+					)
+				},
+			},
+			{
+				Name: "FINALIZE SDEAL",
+				Fn: func(ctx context.Context) error {
+					return orchestrator.RunSalesDealFinalizeIdempotent(
+						ctx,
+						dbConn,
+						processID,
+					)
+				},
+			},
+		},
 	}
 
 	// =========================================================
