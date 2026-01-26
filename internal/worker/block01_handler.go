@@ -2,6 +2,7 @@ package worker
 
 import (
 	"go-import-file/internal/model"
+	"go-import-file/internal/utils"
 	"time"
 )
 
@@ -15,6 +16,9 @@ func (h *Block01Handler) Handle(
 	job FileJob,
 	processID string,
 ) error {
+	ClimitVal, _ := utils.ParseAccountingInt(safe(fields, 11))
+	RppVal, _ := utils.ParseAccountingInt(safe(fields, 20))
+	LsalesVal, _ := utils.ParseAccountingInt(safe(fields, 21))
 
 	h.Out <- model.Mcust{
 		Custno:          safe(fields, 2),
@@ -27,7 +31,7 @@ func (h *Block01Handler) Handle(
 		Phone1:          safe(fields, 9),
 		FaxNo:           safe(fields, 10),
 		Cterm:           safe(fields, 11),
-		Climit:          safe(fields, 12),
+		Climit:          ClimitVal,
 		FlagLimit:       safe(fields, 13),
 		Gdisc:           safe(fields, 14),
 		GrupOut:         safe(fields, 15),
@@ -35,8 +39,8 @@ func (h *Block01Handler) Handle(
 		Gharga:          safe(fields, 17),
 		FlagPay:         safe(fields, 18),
 		FlagOut:         safe(fields, 19),
-		Rpp:             safe(fields, 20),
-		Lsales:          safe(fields, 21),
+		Rpp:             RppVal,
+		Lsales:          LsalesVal,
 		Ldatetrs:        safe(fields, 22),
 		Lokasi:          safe(fields, 23),
 		Distrik:         safe(fields, 24),

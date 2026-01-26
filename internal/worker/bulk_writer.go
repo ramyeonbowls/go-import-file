@@ -415,7 +415,7 @@ func Bulk01(ctx context.Context, db *sql.DB, ch <-chan model.Mcust, done chan<- 
 	rows := make(chan func() []any, 1000)
 
 	go func() {
-		err := bulkUpsertViaTempTable(
+		err := bulkUpsertViaTempTableRowNumber(
 			ctx,
 			db,
 			"dbo.fcustmst",
@@ -433,7 +433,7 @@ func Bulk01(ctx context.Context, db *sql.DB, ch <-chan model.Mcust, done chan<- 
 				CPHONE1 NVARCHAR(255),
 				CFAXNO NVARCHAR(255),
 				CTERM NVARCHAR(255),
-				CLIMIT NVARCHAR(255),
+				CLIMIT INT,
 				FLAGLIMIT NVARCHAR(255),
 				GDISC NVARCHAR(255),
 				GRUPOUT NVARCHAR(255),
@@ -441,8 +441,8 @@ func Bulk01(ctx context.Context, db *sql.DB, ch <-chan model.Mcust, done chan<- 
 				GHARGA NVARCHAR(255),
 				FLAGPAY NVARCHAR(255),
 				FLAGOUT NVARCHAR(255),
-				RPP NVARCHAR(255),
-				LSALES NVARCHAR(255),
+				RPP INT,
+				LSALES INT,
 				LDATETRS NVARCHAR(255),
 				LOKASI NVARCHAR(255),
 				DISTRIK NVARCHAR(255),
@@ -494,6 +494,7 @@ func Bulk01(ctx context.Context, db *sql.DB, ch <-chan model.Mcust, done chan<- 
 			tgt.CORE_FILENAME = src.CORE_FILENAME,
 			tgt.CORE_PROCESSDATE = src.CORE_PROCESSDATE
 			`,
+			"src.CUSTNO, src.KODECABANG",
 			rows, done, l,
 		)
 
@@ -506,14 +507,39 @@ func Bulk01(ctx context.Context, db *sql.DB, ch <-chan model.Mcust, done chan<- 
 		r := r
 		rows <- func() []any {
 			return []any{
-				r.Custno, r.Data01, r.CustName, r.CustAdd1,
-				r.CustAdd2, r.City, r.Contact, r.Phone1,
-				r.FaxNo, r.Cterm, r.Climit, r.FlagLimit,
-				r.Gdisc, r.GrupOut, r.TypeOut, r.Gharga,
-				r.FlagPay, r.FlagOut, r.Rpp, r.Lsales,
-				r.Ldatetrs, r.Lokasi, r.Distrik, r.Beat,
-				r.SubBeat, r.Klasif, r.Kindus, r.Kpasar,
-				r.BranchID, r.La, r.Lg, r.CoreFilename, r.CoreProcessdate,
+				r.Custno,
+				r.Data01,
+				r.CustName,
+				r.CustAdd1,
+				r.CustAdd2,
+				r.City,
+				r.Contact,
+				r.Phone1,
+				r.FaxNo,
+				r.Cterm,
+				r.Climit,
+				r.FlagLimit,
+				r.Gdisc,
+				r.GrupOut,
+				r.TypeOut,
+				r.Gharga,
+				r.FlagPay,
+				r.FlagOut,
+				r.Rpp,
+				r.Lsales,
+				r.Ldatetrs,
+				r.Lokasi,
+				r.Distrik,
+				r.Beat,
+				r.SubBeat,
+				r.Klasif,
+				r.Kindus,
+				r.Kpasar,
+				r.BranchID,
+				r.La,
+				r.Lg,
+				r.CoreFilename,
+				r.CoreProcessdate,
 			}
 		}
 	}

@@ -13,7 +13,7 @@ type Mcust struct {
 	Phone1          string
 	FaxNo           string
 	Cterm           string
-	Climit          string
+	Climit          int
 	FlagLimit       string
 	Gdisc           string
 	GrupOut         string
@@ -21,8 +21,8 @@ type Mcust struct {
 	Gharga          string
 	FlagPay         string
 	FlagOut         string
-	Rpp             string
-	Lsales          string
+	Rpp             int
+	Lsales          int
 	Ldatetrs        string
 	Lokasi          string
 	Distrik         string
