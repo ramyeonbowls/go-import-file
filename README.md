@@ -4,7 +4,7 @@ Simple Go importer for PDAMASTER-style transfer files. Parses files and writes d
 
 ## Quick start
 
-- Build: `go build cmd/main.go -block=EXAMPLE`
+- Build: `go build cmd/main.go`
 - Run: `go run cmd/main.go -block=EXAMPLE` or on Windows:
 
 ```powershell
