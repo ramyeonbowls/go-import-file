@@ -35,5 +35,3 @@ Simple Go importer for PDAMASTER-style transfer files. Parses files and writes d
 ## Contributing
 
 - Open issues or PRs. Add a `LICENSE` file (e.g., MIT) if applicable.
-
-If you want an example `internal/config/config.go` or a sample `config.example.json`, I can add one.
