@@ -21,8 +21,8 @@ func (h *Block130Handler) Handle(
 ) error {
 	now := time.Now()
 
-	ValidFrom := safe(fields, 18)
-	ValidUntil := safe(fields, 19)
+	ValidFrom := safe(fields, 15)
+	ValidUntil := safe(fields, 16)
 
 	Validf, _ := time.Parse("20060102", ValidFrom)
 	Validt, _ := time.Parse("20060102", ValidUntil)
