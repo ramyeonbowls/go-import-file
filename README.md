@@ -8,7 +8,7 @@ Simple Go importer for PDAMASTER-style transfer files. Parses files and writes d
 - Run: `go run cmd/main.go -block=EXAMPLE` or on Windows:
 
 ```powershell
-./cmd -block=EXAMPLE
+./main -block=EXAMPLE
 ```
 
 ## Configuration
