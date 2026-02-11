@@ -54,24 +54,44 @@ func ParseAccountingInt(s string) (int, error) {
 func ParseAccountingFloat(s string) (float64, error) {
 	s = strings.TrimSpace(s)
 
+	if s == "" {
+		return 0, nil
+	}
+
 	negative := false
 
-	// Cek minus di belakang atau depan
+	// Trailing minus
 	if strings.HasSuffix(s, "-") {
 		negative = true
 		s = strings.TrimSuffix(s, "-")
 	}
 
+	// Leading minus
 	if strings.HasPrefix(s, "-") {
 		negative = true
 		s = strings.TrimPrefix(s, "-")
 	}
 
-	// Hilangkan thousand separator (.)
-	s = strings.ReplaceAll(s, ".", "")
+	hasDot := strings.Contains(s, ".")
+	hasComma := strings.Contains(s, ",")
 
-	// Ganti decimal separator (,) -> .
-	s = strings.ReplaceAll(s, ",", ".")
+	// Case: 1.234,56 (EU)
+	if hasDot && hasComma {
+		s = strings.ReplaceAll(s, ".", "")
+		s = strings.ReplaceAll(s, ",", ".")
+	} else if hasDot {
+		// Cuma ada dot
+		parts := strings.Split(s, ".")
+
+		// Kalau segment terakhir panjangnya 3 → thousand
+		if len(parts[len(parts)-1]) == 3 {
+			s = strings.ReplaceAll(s, ".", "")
+		}
+		// else → decimal, biarkan
+	} else if hasComma {
+		// Cuma ada comma → decimal EU
+		s = strings.ReplaceAll(s, ",", ".")
+	}
 
 	v, err := strconv.ParseFloat(s, 64)
 	if err != nil {

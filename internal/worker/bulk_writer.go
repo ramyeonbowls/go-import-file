@@ -1250,7 +1250,7 @@ func Bulk44(ctx context.Context, db *sql.DB, ch <-chan model.McustCl, done chan<
 	rows := make(chan func() []any, 1000)
 
 	go func() {
-		err := bulkUpsertViaTempTable(
+		err := bulkUpsertViaTempTableRowNumber(
 			ctx,
 			db,
 			"dbo.fcredit_limit",
@@ -1277,6 +1277,7 @@ func Bulk44(ctx context.Context, db *sql.DB, ch <-chan model.McustCl, done chan<
 			tgt.UPDATEDATE = src.UPDATEDATE,
 			tgt.UPDATEBY = src.UPDATEBY
 			`,
+			"src.CUSTNO, src.KODECABANG",
 			rows, done, l,
 		)
 
@@ -2496,7 +2497,7 @@ func Bulk123(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesDpZpmix, d
 				V_PERBANDINGAN2 INT
 			)
 			`,
-			"tgt.BLOCKID = src.BLOCKID AND tgt.PROMOID = src.PROMOID AND tgt.LINEITEM = src.LINEITEM AND tgt.CTYP = src.CTYP AND tgt.KEYCOMBINATION = src.KEYCOMBINATION AND tgt.SORG = src.SORG AND tgt.DCHL = src.DCHL AND tgt.SOFF = src.SOFF AND tgt.DV = src.DV AND tgt.CUSTOMER = src.CUSTOMER AND tgt.PL = src.PL AND tgt.PAYT = src.PAYT AND tgt.MATERIAL = src.MATERIAL",
+			"tgt.BLOCKID = src.BLOCKID AND tgt.PROMOID = src.PROMOID AND tgt.LINEITEM = src.LINEITEM AND tgt.CTYP = src.CTYP AND tgt.KEYCOMBINATION = src.KEYCOMBINATION AND tgt.SORG = src.SORG AND tgt.DCHL = src.DCHL AND tgt.SOFF = src.SOFF AND tgt.DV = src.DV AND tgt.CUSTOMER = src.CUSTOMER AND tgt.PL = src.PL AND tgt.PAYT = src.PAYT AND tgt.MATERIAL = src.MATERIAL AND tgt.INDCODE2 = src.INDCODE2 AND tgt.INDCODE3 = src.INDCODE3 AND tgt.INDCODE4 = src.INDCODE4 AND tgt.INDCODE5 = src.INDCODE5 AND tgt.CUST_EXC = src.CUST_EXC",
 			`
 			tgt.PROCESS_ID = src.PROCESS_ID,
 			tgt.BLOCKID = src.BLOCKID,
@@ -2539,7 +2540,7 @@ func Bulk123(ctx context.Context, db *sql.DB, ch <-chan model.SpProsesDpZpmix, d
 			tgt.V_PERBANDINGAN1 = src.V_PERBANDINGAN1,
 			tgt.V_PERBANDINGAN2 = src.V_PERBANDINGAN2
 			`,
-			"src.BLOCKID, src.PROMOID, src.LINEITEM, src.CTYP, src.KEYCOMBINATION, src.SORG, src.DCHL, src.SOFF, src.DV, src.CUSTOMER, src.PL, src.PAYT, src.MATERIAL",
+			"src.BLOCKID, src.PROMOID, src.LINEITEM, src.CTYP, src.KEYCOMBINATION, src.SORG, src.DCHL, src.SOFF, src.DV, src.CUSTOMER, src.PL, src.PAYT, src.MATERIAL, src.INDCODE2, src.INDCODE3, src.INDCODE4, src.INDCODE5, src.CUST_EXC",
 			rows, done, l,
 		)
 

@@ -17,8 +17,8 @@ func (h *Block132Handler) Handle(
 	processID string,
 ) error {
 	ScaleQtyVal, _ := utils.ParseNumber(safe(fields, 4))
-	QtyVal, _ := utils.ParseNumber(safe(fields, 7))
-	AmountSclfVal, _ := utils.ParseNumber(safe(fields, 9))
+	QtyVal, _ := utils.ParseAccountingFloat(safe(fields, 7))
+	AmountSclfVal, _ := utils.ParseAccountingFloat(safe(fields, 9))
 	now := time.Now()
 
 	h.Out <- model.SpProsesFgZfrmix{

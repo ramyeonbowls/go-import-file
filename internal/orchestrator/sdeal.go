@@ -18,6 +18,8 @@ import (
 	"go-import-file/internal/worker"
 )
 
+var ErrNoSDealFiles = fmt.Errorf("No SDEAL files found!")
+
 func RunSalesDeal(
 	ctx context.Context,
 	dbConn *sql.DB,

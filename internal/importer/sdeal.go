@@ -24,7 +24,7 @@ func RunSDealFromDummy(
 	start := time.Now()
 	log.Println("Import SDEAL FROM DUMMY started")
 
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	tx, err := dbConn.BeginTx(ctx, nil)
@@ -34,7 +34,7 @@ func RunSDealFromDummy(
 	defer tx.Rollback()
 
 	query := `
-	EXEC dbo.SP_SDEAL_FROM_DUMMY @PROCESS_ID = @PROCESS_ID
+	EXEC dbo.SP_SDEAL_FROM_DUMMY @FLAG_EMPTY = 1, @PROCESS_ID = @PROCESS_ID
 	`
 
 	var result struct {

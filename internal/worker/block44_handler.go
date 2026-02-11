@@ -3,7 +3,6 @@ package worker
 import (
 	"go-import-file/internal/model"
 	"go-import-file/internal/utils"
-	"strings"
 	"time"
 )
 
@@ -17,8 +16,8 @@ func (h *Block44Handler) Handle(
 	job FileJob,
 	processID string,
 ) error {
-	CreditLimitVal, _ := utils.ParseNumber(strings.ReplaceAll(safe(fields, 4), "-", ""))
-	SisaCreditLimitVal, _ := utils.ParseNumber(strings.ReplaceAll(safe(fields, 5), "-", ""))
+	CreditLimitVal, _ := utils.ParseAccountingFloat(safe(fields, 4))
+	SisaCreditLimitVal, _ := utils.ParseAccountingFloat(safe(fields, 5))
 
 	h.Out <- model.McustCl{
 		CustNo:          safe(fields, 2),

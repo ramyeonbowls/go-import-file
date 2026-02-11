@@ -18,12 +18,12 @@ func (h *Block125Handler) Handle(
 	processID string,
 ) error {
 	LineItemVal, _ := strconv.Atoi(safe(fields, 3))
-	ScaleQtyVal, _ := utils.ParseNumber(safe(fields, 4))
-	AmountVal, _ := utils.ParseNumber(safe(fields, 6))
-	PerVal, _ := utils.ParseNumber(safe(fields, 8))
-	ScaleQtyToVal, _ := utils.ParseNumber(safe(fields, 10))
-	AmountSclVal, _ := utils.ParseNumber(safe(fields, 11))
-	AmountSclToVal, _ := utils.ParseNumber(safe(fields, 12))
+	ScaleQtyVal, _ := utils.ParseAccountingFloat(safe(fields, 4))
+	AmountVal, _ := utils.ParseAccountingFloat(safe(fields, 6))
+	PerVal, _ := utils.ParseAccountingFloat(safe(fields, 8))
+	ScaleQtyToVal, _ := utils.ParseAccountingFloat(safe(fields, 10))
+	AmountSclVal, _ := utils.ParseAccountingFloat(safe(fields, 11))
+	AmountSclToVal, _ := utils.ParseAccountingFloat(safe(fields, 12))
 	now := time.Now()
 
 	h.Out <- model.SpProsesDpZscmix{

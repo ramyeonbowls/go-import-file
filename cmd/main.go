@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"log"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -494,6 +495,19 @@ func main() {
 			},
 		}, */
 		"SDEAL": {
+			{
+				Name: "CHECK SDEAL FILE",
+				Fn: func(ctx context.Context) error {
+					files, _ := filepath.Glob(cfg.FilePath + "/SDEAL_*.txt")
+
+					if len(files) == 0 {
+						log.Println("No SDEAL files. Skipping.")
+						return orchestrator.ErrNoSDealFiles
+					}
+
+					return nil
+				},
+			},
 			{
 				Name: "TRUNCATE SDEAL",
 				Fn: func(ctx context.Context) error {
